@@ -1,60 +1,26 @@
+import os
 from flask import Flask, render_template, request, jsonify
-import requests
+# ここに必要なライブラリ（requestsなど）があれば適宜追加する
 
 app = Flask(__name__)
-inventory = []
 
-# API設定
-EDAMAM_APP_ID = "1ac89caf"
-EDAMAM_APP_KEY = "49c335aae9f6894d4ad1ea013fad590c"
-
-TRANSLATION_MAP = {
-    "鶏肉": "chicken", "たまご": "egg", "卵": "egg", "玉ねぎ": "onion", 
-    "豚肉": "pork", "牛肉": "beef", "トマト": "tomato", "にんじん": "carrot",
-    "じゃがいも": "potato", "牛乳": "milk", "キャベツ": "cabbage"
-}
+# --- ここに既存のルート（@app.route）をすべて記述 ---
 
 @app.route('/')
 def index():
+    # 既存のメイン画面を表示するコード
     return render_template('index.html')
 
-@app.route('/api/add_item', methods=['POST'])
-def add_item():
-    data = request.json
-    inventory.append(data)
-    return jsonify({"status": "success", "inventory": inventory})
+# 音声入力やレシピ生成のAPIルートもここにそのまま残す
+# 例: @app.route('/api/recipe', methods=['POST']) など
 
-@app.route('/api/get_recipes', methods=['GET'])
-def get_recipes():
-    if not inventory:
-        return jsonify({"recipes": []})
+# --- デプロイ用の設定 ---
 
-    # 【家事最適化ロジック】賞味期限が近い順に並び替え
-    inventory.sort(key=lambda x: x['expiry'])
+if __name__ == "__main__":
+    # Renderなどのクラウドサービスでは環境変数「PORT」が指定
+    # 指定がない場合はローカルテスト用に 5000 番を使用
+    port = int(os.environ.get("PORT", 5000))
     
-    # 上位3つの食材を抽出して、組み合わせて検索（フードロス削減の最大化）
-    top_items = [item['name'] for item in inventory[:3]]
-    search_query = ",".join([TRANSLATION_MAP.get(name, name) for name in top_items])
-    
-    url = "https://api.edamam.com/api/recipes/v2"
-    params = {
-        "type": "public",
-        "q": search_query,
-        "app_id": EDAMAM_APP_ID,
-        "app_key": EDAMAM_APP_KEY
-    }
-    
-    try:
-        response = requests.get(url, params=params)
-        data = response.json()
-        recipes = []
-        if "hits" in data:
-            for hit in data['hits'][:5]: # 5件表示
-                r = hit['recipe']
-                recipes.append({"label": r['label'], "url": r['url'], "image": r['image']})
-        return jsonify({"recipes": recipes, "used_items": top_items})
-    except Exception as e:
-        return jsonify({"recipes": [], "error": str(e)})
+    # host="0.0.0.0" にすることで、ネットワーク外からのアクセスを許可
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", port=port, debug=False)
