@@ -11,8 +11,7 @@ EDAMAM_APP_KEY = "49c335aae9f6894d4ad1ea013fad590c"
 
 TRANSLATION_MAP = {
     "鶏肉": "chicken", "たまご": "egg", "卵": "egg", "玉ねぎ": "onion", 
-    "豚肉": "pork", "牛肉": "beef", "トマト": "tomato", "にんじん": "carrot",
-    "じゃがいも": "potato", "牛乳": "milk", "キャベツ": "cabbage"
+    "豚肉": "pork", "牛肉": "beef", "トマト": "tomato", "にんじん": "carrot"
 }
 
 @app.route('/')
@@ -44,23 +43,34 @@ def get_recipes():
     
     try:
         response = requests.get(url, params=params)
+        
+        # 💡 もしAPI制限(429)やエラーが出たら、デモ用のデータを返す（保険）
+        if response.status_code != 200:
+            print(f"APIエラー(Code:{response.status_code})のため、デモ用データを表示します")
+            return jsonify({
+                "recipes": [{
+                    "label": "食材を活かしたおすすめ料理",
+                    "url": "https://www.google.com",
+                    "image": "https://www.edamam.com/web-img/e42/e42f919154440b16a61ba1070c02922a.jpg"
+                }],
+                "is_demo": True
+            })
+
         data = response.json()
         recipes = []
         if "hits" in data:
             for hit in data['hits'][:5]:
                 r = hit['recipe']
-                recipes.append({
-                    "label": r['label'], 
-                    "url": r['url'], 
-                    "image": r['image']
-                })
-        # コンソールで確認用
-        print(f"DEBUG: Found {len(recipes)} recipes for {search_query}")
+                recipes.append({"label": r['label'], "url": r['url'], "image": r['image']})
+        
         return jsonify({"recipes": recipes})
     except Exception as e:
         return jsonify({"recipes": [], "error": str(e)})
 
 if __name__ == '__main__':
-    # ポート5001番で実行
-    port = int(os.environ.get("PORT", 5001))
+    # ポートを5002に変更して、衝突を回避！
+    port = int(os.environ.get("PORT", 5002))
     app.run(debug=True, host="0.0.0.0", port=port)
+
+if __name__ == '__main__':
+    app.run(debug=True)
